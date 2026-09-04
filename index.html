@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoundStudio — Учет проектов звукорежиссера</title>
+    <!-- Шрифты Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- Стили оформления (только внешний файл style.css) -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="studio-body">
+
+    <!-- Верхняя шапка приложения -->
+    <header class="studio-header" id="mainHeader">
+        <div class="header-left">
+            <div class="brand-logo" id="brandLogo">
+                <span class="logo-icon">🎛️</span>
+                <div class="logo-text">
+                    <h1 class="brand-title">SoundStudio</h1>
+                    <span class="brand-subtitle">Учет проектов & Канбан звукорежиссера</span>
+                </div>
+            </div>
+            <!-- Поиск по названию трека или имени клиента -->
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="Поиск по треку, клиенту или услуге..." autocomplete="off">
+                <button type="button" class="btn-clear-search hidden" id="clearSearchBtn" title="Очистить поиск">✕</button>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <!-- Индикатор подключения к базе данных -->
+            <button type="button" class="status-badge" id="dbStatusBtn" title="Нажмите, чтобы посмотреть статус Supabase и SQL-скрипт">
+                <span class="status-dot" id="dbStatusDot"></span>
+                <span class="status-text" id="dbStatusText">Проверка подключения...</span>
+            </button>
+
+            <!-- Переключатель вкладок: Все проекты / Статистика -->
+            <div class="nav-tabs-group" id="navTabsGroup">
+                <button type="button" class="btn btn-secondary btn-nav-tab active" id="navAllProjectsBtn" title="Канбан-доска со всеми проектами">
+                    <span class="btn-icon">📁</span>
+                    <span>Все проекты</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-nav-tab" id="navStatsBtn" title="Полноценная вкладка финансовой статистики по месяцам">
+                    <span class="btn-icon">📊</span>
+                    <span>Статистика</span>
+                </button>
+            </div>
+
+            <button type="button" class="btn btn-secondary" id="openAddColumnModalBtn">
+                <span class="btn-icon">➕</span>
+                <span>Новая колонка</span>
+            </button>
+            <button type="button" class="btn btn-primary" id="openAddProjectModalBtn">
+                <span class="btn-icon">✨</span>
+                <span>Новый проект</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Верхняя панель: Финансовая сводка и статистика -->
+    <section class="finance-bar" id="financeBar">
+        <div class="finance-card">
+            <div class="finance-card-header">
+                <span class="finance-label">Всего заказов</span>
+                <span class="finance-icon">📁</span>
+            </div>
+            <div class="finance-value" id="statTotalProjects">0</div>
+            <div class="finance-sub" id="statProjectsSub">В работе на доске</div>
+        </div>
+
+        <div class="finance-card">
+            <div class="finance-card-header">
+                <span class="finance-label">Общая сумма (Оборот)</span>
+                <span class="finance-icon">💰</span>
+            </div>
+            <div class="finance-value text-accent" id="statTotalRevenue">0 ₽</div>
+            <div class="finance-sub">Сумма всех активных проектов</div>
+        </div>
+
+        <div class="finance-card">
+            <div class="finance-card-header">
+                <span class="finance-label">Получено авансов</span>
+                <span class="finance-icon">✅</span>
+            </div>
+            <div class="finance-value text-success" id="statTotalDeposit">0 ₽</div>
+            <div class="finance-sub">Уже внесенная предоплата</div>
+        </div>
+
+        <div class="finance-card finance-card-debt">
+            <div class="finance-card-header">
+                <span class="finance-label">Остаток долгов клиентов</span>
+                <span class="finance-icon">⏳</span>
+            </div>
+            <div class="finance-value text-warning" id="statTotalDebt">0 ₽</div>
+            <div class="finance-sub">Сумма к доплате при сдаче</div>
+        </div>
+    </section>
+
+    <!-- Панель быстрого переключения колонок (для мобильных телефонов и компактных экранов) -->
+    <nav class="kanban-columns-nav" id="kanbanColumnsNav" aria-label="Быстрый выбор колонки">
+        <!-- Генерируется динамически в app.js: [ 📥 Заявка (2) ] [ ⚙️ Сведение V1 (4) ] ... -->
+    </nav>
+
+    <!-- Основная рабочая область: Канбан-доска в стиле YouGile -->
+    <main class="kanban-wrapper" id="kanbanWrapper">
+        <div class="kanban-board" id="kanbanBoard">
+            <!-- Колонки будут сгенерированы динамически через app.js -->
+            <div class="board-loading" id="boardLoading">
+                <div class="loading-spinner"></div>
+                <p>Загрузка канбан-доски и проектов...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Полноценная вкладка: Финансовая статистика и аналитика по месяцам -->
+    <section class="statistics-view hidden" id="statisticsView" aria-label="Финансовая статистика">
+        <!-- Генерируется динамически через app.js (помесячный расчет, фильтры, карточки, услуги) -->
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- БОКОВАЯ ПАНЕЛЬ: РЕДАКТИРОВАНИЕ И СОЗДАНИЕ ПРОЕКТА (SIDE DRAWER СПРАВА) -->
+    <!-- ======================================================================= -->
+    <div class="side-drawer-container hidden" id="projectModal">
+        <div class="side-drawer-backdrop" id="projectDrawerBackdrop"></div>
+        <div class="side-drawer-panel" id="projectDrawerPanel">
+            <div class="modal-header drawer-header">
+                <div class="modal-header-info drawer-header-info">
+                    <h2 class="modal-title drawer-title" id="projectModalTitle">Новый проект</h2>
+                    <p class="modal-subtitle drawer-subtitle" id="projectModalSubtitle">Заполните данные о клиенте, треке и отметьте услуги</p>
+                </div>
+                <button type="button" class="btn-close-drawer" id="closeProjectModalBtn" title="Закрыть панель (Esc)">✕</button>
+            </div>
+
+            <form id="projectForm" class="modal-form drawer-form">
+                <!-- Скрытое поле для ID при редактировании -->
+                <input type="hidden" id="projectIdField" value="">
+
+                <div class="form-row form-row-2">
+                    <div class="form-group">
+                        <label for="trackTitleInput" class="form-label">
+                            Название трека / альбома <span class="required">*</span>
+                        </label>
+                        <input type="text" id="trackTitleInput" class="form-control" placeholder="например: 'Neon Lights' (Single)" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="clientNameInput" class="form-label">
+                            Имя клиента / Артист <span class="required">*</span>
+                        </label>
+                        <input type="text" id="clientNameInput" class="form-control" placeholder="например: Макс Корж / DJ Pulse" required>
+                    </div>
+                </div>
+
+                <div class="form-row form-row-3 form-row-project-meta" id="projectMetaRow">
+                    <div class="form-group">
+                        <label for="clientLinkInput" class="form-label">Ссылка / Контакт клиента</label>
+                        <input type="text" id="clientLinkInput" class="form-control" placeholder="@username или t.me/... или vk.com/...">
+                        <span class="form-hint">Telegram, VK, Instagram или телефон</span>
+                    </div>
+
+                    <div class="form-group deadline-form-group">
+                        <div class="deadline-label-row">
+                            <label for="deadlineDateInput" class="form-label mb-0">Дедлайн сдачи</label>
+                            <button type="button" class="btn-clear-deadline" id="clearDeadlineBtn" title="Удалить дедлайн у задачи">
+                                <span class="clear-icon">✕</span>
+                                <span class="clear-text">Удалить дедлайн</span>
+                            </button>
+                        </div>
+                        <input type="date" id="deadlineDateInput" class="form-control">
+                        <span class="form-hint" id="deadlineHint">Дата готовности трека (или нажмите «Удалить дедлайн»)</span>
+                    </div>
+
+                    <div class="form-group" id="createdAtGroup">
+                        <label for="createdAtInput" class="form-label">Дата добавления задачи</label>
+                        <input type="date" id="createdAtInput" class="form-control">
+                        <span class="form-hint">Для расчета помесячной статистики</span>
+                    </div>
+
+                    <div class="form-group" id="columnSelectGroup">
+                        <label for="columnSelectInput" class="form-label">Статус (Колонка)</label>
+                        <select id="columnSelectInput" class="form-control">
+                            <!-- Опции заполняются динамически -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Блок выбора услуг и калькулятор -->
+                <div class="services-selection-section">
+                    <div class="services-header">
+                        <label class="form-label mb-0">Выбор услуг из прайс-листа</label>
+                        <button type="button" class="btn-link" id="quickAddServiceBtn">+ Новая услуга</button>
+                    </div>
+
+                    <div class="services-checkbox-grid" id="servicesCheckboxGrid">
+                        <!-- Список чекбоксов услуг рендерится из app.js -->
+                    </div>
+                </div>
+
+                <!-- Калькулятор стоимости -->
+                <div class="calculator-box">
+                    <div class="calc-row">
+                        <span class="calc-label">Выбрано услуг:</span>
+                        <span class="calc-value" id="calcSelectedCount">0 шт.</span>
+                    </div>
+                    <div class="calc-row highlight">
+                        <span class="calc-label">Итоговая сумма:</span>
+                        <span class="calc-value total-price" id="calcTotalPriceDisplay">0 ₽</span>
+                    </div>
+                    <div class="calc-row input-row">
+                        <label for="depositInput" class="calc-label">Предоплата (Аванс):</label>
+                        <div class="deposit-input-wrapper">
+                            <input type="number" id="depositInput" class="form-control deposit-input" min="0" step="100" value="0" placeholder="0">
+                            <span class="currency-sign">₽</span>
+                        </div>
+                    </div>
+                    <div class="calc-row highlight remaining-row">
+                        <span class="calc-label">Остаток к оплате:</span>
+                        <span class="calc-value remaining-price" id="calcRemainingDisplay">0 ₽</span>
+                    </div>
+                </div>
+
+                <!-- Дополнительные заметки -->
+                <div class="form-group">
+                    <label for="projectNotesInput" class="form-label">Заметки / ТЗ к проекту</label>
+                    <textarea id="projectNotesInput" class="form-control" rows="3" placeholder="Референсы, пожелания по сведению, тональность, ссылка на облако с мультитреком..."></textarea>
+                </div>
+
+                <div class="modal-actions drawer-actions">
+                    <button type="button" class="btn btn-danger hidden" id="deleteProjectFromModalBtn" style="margin-right: auto;">
+                        🗑️ Удалить проект
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="cancelProjectModalBtn">Закрыть</button>
+                    <button type="submit" class="btn btn-primary" id="saveProjectBtn">
+                        <span>Сохранить</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- МОДАЛЬНОЕ ОКНО 2: УПРАВЛЕНИЕ ПРАЙС-ЛИСТОМ                               -->
+    <!-- ======================================================================= -->
+    <div class="modal-overlay hidden" id="priceModal">
+        <div class="modal-card modal-md">
+            <div class="modal-header">
+                <div class="modal-header-info">
+                    <h2 class="modal-title">Прайс-лист услуг студии</h2>
+                    <p class="modal-subtitle">Настройте список услуг и базовые цены в рублях</p>
+                </div>
+                <button type="button" class="btn-close-modal" id="closePriceModalBtn">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Форма быстрого добавления услуги -->
+                <form id="addServiceForm" class="add-service-inline-form">
+                    <div class="form-group flex-1">
+                        <label for="newServiceNameInput" class="form-label">Название услуги</label>
+                        <input type="text" id="newServiceNameInput" class="form-control" placeholder="например: Сведение вокала с минусом" required>
+                    </div>
+                    <div class="form-group w-140">
+                        <label for="newServicePriceInput" class="form-label">Цена (₽)</label>
+                        <input type="number" id="newServicePriceInput" class="form-control" placeholder="3000" min="0" step="100" required>
+                    </div>
+                    <div class="form-group btn-align">
+                        <button type="submit" class="btn btn-primary">
+                            <span>Добавить</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Таблица текущих услуг -->
+                <div class="price-list-table-wrapper">
+                    <table class="price-table">
+                        <thead>
+                            <tr>
+                                <th>Услуга</th>
+                                <th class="text-right">Базовая цена</th>
+                                <th class="text-center w-70">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="priceTableBody">
+                            <!-- Заполняется через app.js -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="price-footer-actions">
+                    <button type="button" class="btn-link danger" id="resetServicesDefaultsBtn">Восстановить стандартный прайс-лист</button>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="closePriceModalFooterBtn">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- МОДАЛЬНОЕ ОКНО 3: ДОБАВЛЕНИЕ / РЕДАКТИРОВАНИЕ КОЛОНКИ                   -->
+    <!-- ======================================================================= -->
+    <div class="modal-overlay hidden" id="columnModal">
+        <div class="modal-card modal-sm">
+            <div class="modal-header">
+                <div class="modal-header-info">
+                    <h2 class="modal-title" id="columnModalTitle">Новая колонка</h2>
+                    <p class="modal-subtitle">Добавьте этап работы на канбан-доске</p>
+                </div>
+                <button type="button" class="btn-close-modal" id="closeColumnModalBtn">&times;</button>
+            </div>
+
+            <form id="columnForm" class="modal-form">
+                <input type="hidden" id="columnIdField" value="">
+                <div class="form-group">
+                    <label for="columnTitleInput" class="form-label">Название колонки <span class="required">*</span></label>
+                    <input type="text" id="columnTitleInput" class="form-control" placeholder="например: 'Отправлено на радио' или 'Архив'" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelColumnModalBtn">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="saveColumnBtn">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- МОДАЛЬНОЕ ОКНО 4: SUPABASE СТАТУС & ИНСТРУКЦИЯ С SQL                    -->
+    <!-- ======================================================================= -->
+    <div class="modal-overlay hidden" id="supabaseModal">
+        <div class="modal-card modal-lg">
+            <div class="modal-header">
+                <div class="modal-header-info">
+                    <h2 class="modal-title">Подключение к Supabase</h2>
+                    <p class="modal-subtitle">Статус базы данных и SQL-скрипт инициализации таблиц</p>
+                </div>
+                <button type="button" class="btn-close-modal" id="closeSupabaseModalBtn">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Текущее состояние подключения -->
+                <div class="supabase-status-box" id="supabaseStatusBox">
+                    <div class="status-indicator-row">
+                        <span class="status-dot-lg" id="modalStatusDot"></span>
+                        <div>
+                            <h3 class="status-heading" id="modalStatusHeading">Проверка соединения...</h3>
+                            <p class="status-desc" id="modalStatusDesc">Подключаемся к базе данных...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Быстрая инструкция -->
+                <div class="setup-steps">
+                    <h4>Инструкция по настройке Supabase:</h4>
+                    <ol class="steps-list">
+                        <li>Создайте бесплатный аккаунт на <a href="https://supabase.com" target="_blank" rel="noreferrer" class="studio-link">supabase.com</a> и создайте новый проект.</li>
+                        <li>Перейдите в левом меню в <strong>SQL Editor</strong> -> <strong>New query</strong>.</li>
+                        <li>Вставьте SQL-скрипт, приведенный ниже, и нажмите кнопку <strong>Run</strong>.</li>
+                        <li>В файле <code>config.js</code> вставьте ваш <strong>Project URL</strong> и <strong>anon public key</strong> (из меню <em>Project Settings -> API</em>).</li>
+                    </ol>
+                </div>
+
+                <!-- Блок с SQL-кодом -->
+                <div class="sql-code-container">
+                    <div class="sql-code-header">
+                        <span>SQL-скрипт для создания таблиц в Supabase</span>
+                        <button type="button" class="btn btn-sm btn-secondary" id="copySqlBtn">
+                            <span>📋 Копировать SQL</span>
+                        </button>
+                    </div>
+                    <pre class="sql-code-block" id="sqlCodeBlock"><code>-- 1. Таблица колонок канбан-доски
+CREATE TABLE IF NOT EXISTS kanban_columns (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 2. Таблица услуг прайс-листа
+CREATE TABLE IF NOT EXISTS services (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    price NUMERIC NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 3. Таблица проектов / треков
+CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    track_title TEXT NOT NULL,
+    client_name TEXT NOT NULL,
+    client_link TEXT,
+    selected_services JSONB NOT NULL DEFAULT '[]'::jsonb,
+    total_price NUMERIC NOT NULL DEFAULT 0,
+    deposit NUMERIC NOT NULL DEFAULT 0,
+    remaining_balance NUMERIC NOT NULL DEFAULT 0,
+    deadline_date DATE,
+    column_id TEXT NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 4. Политики безопасности (Row Level Security)
+ALTER TABLE kanban_columns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read-write for kanban_columns" ON kanban_columns FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write for services" ON services FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write for projects" ON projects FOR ALL USING (true) WITH CHECK (true);
+
+-- 5. Начальные колонки по умолчанию
+INSERT INTO kanban_columns (id, title, sort_order) VALUES
+('col-1', 'Заявка', 1),
+('col-2', 'Ожидание исходников/Аванс', 2),
+('col-3', 'Сведение V1', 3),
+('col-4', 'Правки', 4),
+('col-5', 'Мастеринг', 5),
+('col-6', 'Готово / Оплачено', 6)
+ON CONFLICT (id) DO NOTHING;
+
+-- 6. Начальные услуги прайс-листа
+INSERT INTO services (id, name, price) VALUES
+('srv-1', 'Сведение (мультитрек)', 7000),
+('srv-2', 'Мастеринг (стерео)', 2500),
+('srv-3', 'Тюнинг вокала (ручной)', 2000),
+('srv-4', 'Коррекция тайминга вокала', 1500),
+('srv-5', 'Саунд-дизайн / FX', 3000),
+('srv-6', 'Продюсирование аранжировки', 10000),
+('srv-7', 'Правки (дополнительный круг)', 1000)
+ON CONFLICT (id) DO NOTHING;</code></pre>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="closeSupabaseModalFooterBtn">Понятно</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- МОДАЛЬНОЕ ОКНО 5: ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ (БЕЗ window.confirm)         -->
+    <!-- ======================================================================= -->
+    <div class="modal-overlay hidden" id="confirmModal">
+        <div class="modal-card modal-sm">
+            <div class="modal-header">
+                <div class="modal-header-info">
+                    <h2 class="modal-title" id="confirmModalTitle">Подтверждение</h2>
+                </div>
+                <button type="button" class="btn-close-modal" id="closeConfirmModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmModalMessage" style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
+                    Вы уверены, что хотите выполнить это действие?
+                </p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="confirmModalCancelBtn">Отмена</button>
+                <button type="button" class="btn btn-danger" id="confirmModalActionBtn">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Всплывающие уведомления (Toasts) -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Подключение Supabase JS SDK v2 через CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Файл настроек и ключей -->
+    <script src="config.js"></script>
+    <!-- Основная логика приложения -->
+    <script src="app.js"></script>
+</body>
+</html>
