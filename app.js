@@ -239,7 +239,10 @@ async function initDatabaseConnection() {
 
     if (isConfigured && window.supabase) {
         try {
-            appState.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            // Очищаем URL от возможных случайных путей вроде /rest/v1/
+            const cleanUrl = SUPABASE_URL.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
+            const cleanKey = SUPABASE_ANON_KEY.trim();
+            appState.supabaseClient = window.supabase.createClient(cleanUrl, cleanKey);
             // Пробный запрос для проверки соединения
             const { error } = await appState.supabaseClient.from('kanban_columns').select('count', { count: 'exact', head: true });
             
