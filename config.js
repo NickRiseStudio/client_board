@@ -15,5 +15,5 @@
 // благодаря чему вы можете полноценно тестировать функционал прямо сейчас.
 // =============================================================================
 
-const SUPABASE_URL = "https://nickrisestudio.github.io/client_board";
+const SUPABASE_URL = "https://phstljqmahjshyiqnwyd.supabase.co/rest/v1/";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoc3RsanFtYWhqc2h5aXFud3lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NDYxMDMsImV4cCI6MjEwNDEyMjEwM30.n29JnaU9YKKrSgfdpr06WKJT1JGQrtHvfkldSroCHs4";
