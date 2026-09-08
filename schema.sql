@@ -42,20 +42,34 @@ CREATE TABLE IF NOT EXISTS projects (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- 4. Таблица пресетов постоянных клиентов (шаблоны для верхней плашки)
+CREATE TABLE IF NOT EXISTS client_presets (
+    id TEXT PRIMARY KEY,
+    client_name TEXT NOT NULL,
+    client_link TEXT,
+    avatar_color TEXT DEFAULT 'amber',
+    default_services JSONB NOT NULL DEFAULT '[]'::jsonb,
+    default_deposit NUMERIC DEFAULT 0,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- =============================================================================
--- 4. ПОЛИТИКИ БЕЗОПАСНОСТИ (ROW LEVEL SECURITY)
+-- 5. ПОЛИТИКИ БЕЗОПАСНОСТИ (ROW LEVEL SECURITY)
 -- =============================================================================
 ALTER TABLE kanban_columns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_presets ENABLE ROW LEVEL SECURITY;
 
 -- Разрешаем чтение и запись с публичным анонимным ключом (anon key)
 CREATE POLICY "Allow public read-write for kanban_columns" ON kanban_columns FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write for services" ON services FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write for projects" ON projects FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write for client_presets" ON client_presets FOR ALL USING (true) WITH CHECK (true);
 
 -- =============================================================================
--- 5. НАЧАЛЬНЫЕ ДАННЫЕ: КОЛОНКИ КАНБАН-ДОСКИ
+-- 6. НАЧАЛЬНЫЕ ДАННЫЕ: КОЛОНКИ КАНБАН-ДОСКИ
 -- =============================================================================
 INSERT INTO kanban_columns (id, title, sort_order) VALUES
 ('col-1', 'Заявка', 1),
@@ -67,7 +81,7 @@ INSERT INTO kanban_columns (id, title, sort_order) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- =============================================================================
--- 6. НАЧАЛЬНЫЕ ДАННЫЕ: ПРАЙС-ЛИСТ СТУДИИ
+-- 7. НАЧАЛЬНЫЕ ДАННЫЕ: ПРАЙС-ЛИСТ СТУДИИ
 -- =============================================================================
 INSERT INTO services (id, name, price) VALUES
 ('srv-1', 'Сведение (мультитрек)', 7000),

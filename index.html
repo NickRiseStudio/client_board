@@ -61,42 +61,31 @@
         </div>
     </header>
 
-    <!-- Верхняя панель: Финансовая сводка и статистика -->
-    <section class="finance-bar" id="financeBar">
-        <div class="finance-card">
-            <div class="finance-card-header">
-                <span class="finance-label">Всего заказов</span>
-                <span class="finance-icon">📁</span>
+    <!-- ВЕРХНЯЯ ПЛАШКА: ПРЕСЕТЫ ПОСТОЯННЫХ КЛИЕНТОВ (ВКЛАДКА «ВСЕ ПРОЕКТЫ») -->
+    <!-- Нажмите на овальный пресет клиента для редактирования, или перетащите на колонку доски -->
+    <section class="client-presets-bar" id="clientPresetsBar" aria-label="Пресеты постоянных клиентов">
+        <div class="presets-bar-inner">
+            <div class="presets-info-block">
+                <span class="presets-badge-title" title="Пресеты постоянных клиентов: нажмите на пресет для изменения или перетащите на колонку для создания трека">
+                    <span class="presets-spark-icon">⚡</span>
+                    <span>Пресеты</span>
+                    <span class="presets-count-pill" id="presetsCountBadge">0</span>
+                </span>
             </div>
-            <div class="finance-value" id="statTotalProjects">0</div>
-            <div class="finance-sub" id="statProjectsSub">В работе на доске</div>
-        </div>
 
-        <div class="finance-card">
-            <div class="finance-card-header">
-                <span class="finance-label">Общая сумма (Оборот)</span>
-                <span class="finance-icon">💰</span>
+            <div class="presets-carousel-wrapper">
+                <button type="button" class="btn-carousel-arrow" id="presetCarouselScrollLeftBtn" title="Прокрутить пресеты влево">‹</button>
+                <div class="presets-carousel" id="presetsCarousel">
+                    <!-- Динамически заполняется компактными овальными пресетами артистов через app.js -->
+                </div>
+                <button type="button" class="btn-carousel-arrow" id="presetCarouselScrollRightBtn" title="Прокрутить пресеты вправо">›</button>
             </div>
-            <div class="finance-value text-accent" id="statTotalRevenue">0 ₽</div>
-            <div class="finance-sub">Сумма всех активных проектов</div>
-        </div>
 
-        <div class="finance-card">
-            <div class="finance-card-header">
-                <span class="finance-label">Получено авансов</span>
-                <span class="finance-icon">✅</span>
+            <div class="presets-actions-block">
+                <button type="button" class="btn-new-preset" id="openAddPresetModalBtn" title="Добавить нового постоянного клиента в пресеты">
+                    <span>➕ Пресет</span>
+                </button>
             </div>
-            <div class="finance-value text-success" id="statTotalDeposit">0 ₽</div>
-            <div class="finance-sub">Уже внесенная предоплата</div>
-        </div>
-
-        <div class="finance-card finance-card-debt">
-            <div class="finance-card-header">
-                <span class="finance-label">Остаток долгов клиентов</span>
-                <span class="finance-icon">⏳</span>
-            </div>
-            <div class="finance-value text-warning" id="statTotalDebt">0 ₽</div>
-            <div class="finance-sub">Сумма к доплате при сдаче</div>
         </div>
     </section>
 
@@ -116,9 +105,9 @@
         </div>
     </main>
 
-    <!-- Полноценная вкладка: Финансовая статистика и аналитика по месяцам -->
+    <!-- Полноценная вкладка: Финансовая статистика и аналитика по месяцам (включает финансовую панель) -->
     <section class="statistics-view hidden" id="statisticsView" aria-label="Финансовая статистика">
-        <!-- Генерируется динамически через app.js (помесячный расчет, фильтры, карточки, услуги) -->
+        <!-- Генерируется динамически через app.js (финансовая сводка, помесячный расчет, фильтры, карточки, услуги) -->
     </section>
 
     <!-- ======================================================================= -->
@@ -328,6 +317,175 @@
     </div>
 
     <!-- ======================================================================= -->
+    <!-- МОДАЛЬНОЕ ОКНО: СОЗДАНИЕ И РЕДАКТИРОВАНИЕ ПРЕСЕТА КЛИЕНТА                -->
+    <!-- ======================================================================= -->
+    <div class="modal-overlay hidden" id="presetModal">
+        <div class="modal-card modal-md">
+            <div class="modal-header">
+                <div class="modal-header-info">
+                    <h2 class="modal-title" id="presetModalTitle">Новый пресет постоянного клиента</h2>
+                    <p class="modal-subtitle">Настройте артиста и стандартный пакет услуг для быстрого создания треков в 1 клик</p>
+                </div>
+                <button type="button" class="btn-close-modal" id="closePresetModalBtn" title="Закрыть (Esc)">&times;</button>
+            </div>
+
+            <form id="presetForm" class="modal-form">
+                <input type="hidden" id="presetIdField" value="">
+
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="presetClientNameInput" class="form-label required">Имя артиста / Клиент</label>
+                        <input type="text" id="presetClientNameInput" class="form-input" placeholder="Например: Макс Корж или Lana Ray" required autocomplete="off">
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="presetClientLinkInput" class="form-label">Контактная ссылка / Telegram</label>
+                        <input type="text" id="presetClientLinkInput" class="form-input" placeholder="@username, t.me/... или VK" autocomplete="off">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Цвет аватара клиента</label>
+                    <div class="preset-color-selector" id="presetColorSelector">
+                        <label class="color-radio-label">
+                            <input type="radio" name="preset_color" value="amber" checked>
+                            <span class="color-dot dot-amber" title="Янтарный"></span>
+                        </label>
+                        <label class="color-radio-label">
+                            <input type="radio" name="preset_color" value="cyan">
+                            <span class="color-dot dot-cyan" title="Циан / Бирюзовый"></span>
+                        </label>
+                        <label class="color-radio-label">
+                            <input type="radio" name="preset_color" value="purple">
+                            <span class="color-dot dot-purple" title="Фиолетовый"></span>
+                        </label>
+                        <label class="color-radio-label">
+                            <input type="radio" name="preset_color" value="emerald">
+                            <span class="color-dot dot-emerald" title="Изумрудный"></span>
+                        </label>
+                        <label class="color-radio-label">
+                            <input type="radio" name="preset_color" value="rose">
+                            <span class="color-dot dot-rose" title="Розовый"></span>
+                        </label>
+                        <label class="color-radio-label">
+                            <input type="radio" name="preset_color" value="blue">
+                            <span class="color-dot dot-blue" title="Синий"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Список стандартных услуг пресета -->
+                <div class="form-group">
+                    <div class="services-header-row">
+                        <label class="form-label">Стандартный пакет услуг клиента</label>
+                        <span class="services-badge-hint">Отметьте типовые услуги</span>
+                    </div>
+                    <div class="services-checkbox-grid" id="presetServicesCheckboxGrid">
+                        <!-- Чекбоксы услуг пресета генерируются в app.js -->
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="presetDefaultDepositInput" class="form-label">Стандартный аванс (предоплата), ₽</label>
+                        <input type="number" id="presetDefaultDepositInput" class="form-input" placeholder="0" min="0" step="500">
+                    </div>
+                    <div class="form-group flex-1">
+                        <label class="form-label">Расчетная сумма пресета</label>
+                        <div class="preset-calc-preview" id="presetCalculatedTotal">0 ₽</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="presetNotesInput" class="form-label">Типовые пожелания / Заметки артиста</label>
+                    <textarea id="presetNotesInput" class="form-textarea" rows="2" placeholder="Например: Плотный вокал с сатурацией, референс The Weeknd..."></textarea>
+                </div>
+
+                <div class="modal-actions" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <button type="button" class="btn btn-secondary hidden" id="deletePresetModalBtn" style="color: #f87171; border-color: rgba(239, 68, 68, 0.4);" title="Удалить этот пресет клиента">
+                        <span>🗑️ Удалить пресет</span>
+                    </button>
+                    <div style="display: flex; gap: 8px; margin-left: auto;">
+                        <button type="button" class="btn btn-secondary" id="cancelPresetModalBtn">Отмена</button>
+                        <button type="button" class="btn btn-secondary hidden" id="presetModalUseBtn" title="Создать проект в работу по этому пресету">
+                            <span>✨ В работу</span>
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="savePresetBtn">
+                            <span class="btn-icon">💾</span>
+                            <span>Сохранить</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- МОДАЛЬНОЕ ОКНО: БЫСТРОЕ СОЗДАНИЕ ТРЕКА ИЗ ПРЕСЕТА КЛИЕНТА (В 1 КЛИК)   -->
+    <!-- ======================================================================= -->
+    <div class="modal-overlay hidden" id="presetToProjectModal">
+        <div class="modal-card modal-md">
+            <div class="modal-header">
+                <div class="modal-header-info">
+                    <h2 class="modal-title" id="p2pModalTitle">Создать трек по пресету</h2>
+                    <p class="modal-subtitle">Пресет клиента останется в верхней плашке для будущих треков</p>
+                </div>
+                <button type="button" class="btn-close-modal" id="closeP2PModalBtn" title="Закрыть (Esc)">&times;</button>
+            </div>
+
+            <form id="presetToProjectForm" class="modal-form">
+                <input type="hidden" id="p2pPresetIdField" value="">
+
+                <!-- Карточка сводки выбранного пресета -->
+                <div class="p2p-summary-card" id="p2pSummaryCard">
+                    <!-- Заполняется динамически: аватар, артист, услуги, сумма -->
+                </div>
+
+                <div class="form-group">
+                    <label for="p2pTrackTitleInput" class="form-label required">Название нового трека / сингла</label>
+                    <input type="text" id="p2pTrackTitleInput" class="form-input" placeholder="Например: Новый сингл (Radio Edit)" required autocomplete="off">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="p2pColumnSelect" class="form-label required">Колонка (этап на доске)</label>
+                        <select id="p2pColumnSelect" class="form-select" required>
+                            <!-- Колонки подставляются динамически -->
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="p2pDeadlineInput" class="form-label">Дедлайн сдачи трека</label>
+                        <input type="date" id="p2pDeadlineInput" class="form-input">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="p2pDepositInput" class="form-label">Внесенный аванс, ₽</label>
+                        <input type="number" id="p2pDepositInput" class="form-input" placeholder="0" min="0" step="500">
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="p2pTotalPriceInput" class="form-label">Итоговая стоимость трека, ₽</label>
+                        <input type="number" id="p2pTotalPriceInput" class="form-input" min="0" step="500">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="p2pNotesInput" class="form-label">Заметки / ТЗ к этому треку</label>
+                    <textarea id="p2pNotesInput" class="form-textarea" rows="2" placeholder="Особые пожелания или ссылки на исходники..."></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelP2PModalBtn">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="submitP2PBtn">
+                        <span class="btn-icon">✨</span>
+                        <span>Создать трек на доске</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
     <!-- МОДАЛЬНОЕ ОКНО 4: SUPABASE СТАТУС & ИНСТРУКЦИЯ С SQL                    -->
     <!-- ======================================================================= -->
     <div class="modal-overlay hidden" id="supabaseModal">
@@ -403,16 +561,30 @@ CREATE TABLE IF NOT EXISTS projects (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 4. Политики безопасности (Row Level Security)
+-- 4. Таблица пресетов клиентов (быстрые шаблоны)
+CREATE TABLE IF NOT EXISTS client_presets (
+    id TEXT PRIMARY KEY,
+    client_name TEXT NOT NULL,
+    client_link TEXT,
+    avatar_color TEXT DEFAULT 'amber',
+    default_services JSONB NOT NULL DEFAULT '[]'::jsonb,
+    default_deposit NUMERIC DEFAULT 0,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 5. Политики безопасности (Row Level Security)
 ALTER TABLE kanban_columns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE client_presets ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow public read-write for kanban_columns" ON kanban_columns FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write for services" ON services FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write for projects" ON projects FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write for client_presets" ON client_presets FOR ALL USING (true) WITH CHECK (true);
 
--- 5. Начальные колонки по умолчанию
+-- 6. Начальные колонки по умолчанию
 INSERT INTO kanban_columns (id, title, sort_order) VALUES
 ('col-1', 'Заявка', 1),
 ('col-2', 'Ожидание исходников/Аванс', 2),
@@ -422,7 +594,7 @@ INSERT INTO kanban_columns (id, title, sort_order) VALUES
 ('col-6', 'Готово / Оплачено', 6)
 ON CONFLICT (id) DO NOTHING;
 
--- 6. Начальные услуги прайс-листа
+-- 7. Начальные услуги прайс-листа
 INSERT INTO services (id, name, price) VALUES
 ('srv-1', 'Сведение (мультитрек)', 7000),
 ('srv-2', 'Мастеринг (стерео)', 2500),

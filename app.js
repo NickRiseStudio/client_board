@@ -95,6 +95,60 @@ const DEFAULT_SERVICES = [
     { id: 'srv-7', name: 'Правки (дополнительный круг)', price: 1000 }
 ];
 
+// Стандартные пресеты постоянных клиентов звукорежиссера для быстрого создания треков в 1 клик
+const DEFAULT_PRESETS = [
+    {
+        id: 'preset-1',
+        client_name: 'Макс Корж',
+        client_link: '@maxkorzh',
+        avatar_color: 'amber',
+        default_services: [
+            { id: 'srv-1', quantity: 1 }, // Сведение (мультитрек)
+            { id: 'srv-2', quantity: 1 }  // Мастеринг (стерео)
+        ],
+        default_deposit: 5000,
+        notes: 'Фирменный напористый звук, плотный суб-бас и акцентированный вокал.'
+    },
+    {
+        id: 'preset-2',
+        client_name: 'Lana Ray',
+        client_link: '@lanaray_singer',
+        avatar_color: 'rose',
+        default_services: [
+            { id: 'srv-3', quantity: 2 }, // Тюнинг вокала (ручной)
+            { id: 'srv-1', quantity: 1 }, // Сведение (мультитрек)
+            { id: 'srv-2', quantity: 1 }  // Мастеринг (стерео)
+        ],
+        default_deposit: 7000,
+        notes: 'Нежный воздушный вокал, реверберационные хвосты, параллельная компрессия.'
+    },
+    {
+        id: 'preset-3',
+        client_name: 'DJ Pulse',
+        client_link: '@djpulse_music',
+        avatar_color: 'cyan',
+        default_services: [
+            { id: 'srv-1', quantity: 1 }, // Сведение (мультитрек)
+            { id: 'srv-5', quantity: 2 }, // Саунд-дизайн / FX
+            { id: 'srv-2', quantity: 1 }  // Мастеринг (стерео)
+        ],
+        default_deposit: 8000,
+        notes: 'Клубный микс: сайдчейн от бочки к синту, широкий стереобас, аналоговая сатурация.'
+    },
+    {
+        id: 'preset-4',
+        client_name: 'The Echoes Band',
+        client_link: 'https://vk.com/the_echoes_band',
+        avatar_color: 'purple',
+        default_services: [
+            { id: 'srv-1', quantity: 1 }, // Сведение
+            { id: 'srv-4', quantity: 1 }  // Коррекция тайминга вокала
+        ],
+        default_deposit: 5000,
+        notes: 'Живой инди-рок, естественная динамика живых барабанов, без чрезмерного овердрайва.'
+    }
+];
+
 // Демонстрационные проекты для быстрого ознакомления с реалистичными датами добавления
 const INITIAL_DEMO_PROJECTS = [
     {
@@ -204,9 +258,12 @@ const appState = {
     columns: [],
     services: [],
     projects: [],
+    presets: [],             // Пресеты постоянных клиентов (карточки быстрой загрузки)
     searchQuery: '',
     draggedProjectId: null,
+    draggedPresetId: null,    // ID перетаскиваемого пресета клиента
     activeEditingProjectId: null,
+    activeEditingPresetId: null,
     currentView: 'projects', // 'projects' (Канбан-доска) | 'statistics' (Полноценная вкладка статистики)
     statsMonthFilter: 'all',  // Фильтр по месяцу ('all' или 'YYYY-MM')
     statsStatusFilter: 'all'  // Фильтр по статусу ('all', 'active', 'completed')
@@ -326,6 +383,20 @@ async function loadInitialData() {
                 .select('*')
                 .order('created_at', { ascending: false });
 
+            // 4. Загрузка пресетов клиентов (если таблица создана в Supabase)
+            let loadedPresets = null;
+            try {
+                const { data: presetsData, error: pstErr } = await appState.supabaseClient
+                    .from('client_presets')
+                    .select('*')
+                    .order('created_at', { ascending: true });
+                if (!pstErr && presetsData && presetsData.length > 0) {
+                    loadedPresets = presetsData;
+                }
+            } catch (e) {
+                // Таблица еще не создана
+            }
+
             if (!colErr && columnsData && columnsData.length > 0) {
                 appState.columns = columnsData;
             } else {
@@ -346,6 +417,14 @@ async function loadInitialData() {
             } else {
                 appState.projects = [];
             }
+
+            if (loadedPresets) {
+                appState.presets = loadedPresets;
+            } else {
+                const localPresets = localStorage.getItem('soundstudio_presets');
+                appState.presets = localPresets ? JSON.parse(localPresets) : [...DEFAULT_PRESETS];
+            }
+            saveDataLocally();
             return;
         } catch (err) {
             console.error('Ошибка загрузки из Supabase, переключаемся на LocalStorage:', err);
@@ -356,10 +435,12 @@ async function loadInitialData() {
     const localColumns = localStorage.getItem('soundstudio_columns');
     const localServices = localStorage.getItem('soundstudio_services');
     const localProjects = localStorage.getItem('soundstudio_projects');
+    const localPresets = localStorage.getItem('soundstudio_presets');
 
     appState.columns = localColumns ? JSON.parse(localColumns) : [...DEFAULT_COLUMNS];
     appState.services = localServices ? JSON.parse(localServices) : [...DEFAULT_SERVICES];
     appState.projects = localProjects ? JSON.parse(localProjects) : [...INITIAL_DEMO_PROJECTS];
+    appState.presets = localPresets ? JSON.parse(localPresets) : [...DEFAULT_PRESETS];
 
     // Гарантируем наличие услуги правок в списке услуг, если ее еще нет
     if (!appState.services.some(s => s.id === 'srv-7' || s.name.toLowerCase().includes('правк'))) {
@@ -388,6 +469,7 @@ function saveDataLocally() {
     localStorage.setItem('soundstudio_columns', JSON.stringify(appState.columns));
     localStorage.setItem('soundstudio_services', JSON.stringify(appState.services));
     localStorage.setItem('soundstudio_projects', JSON.stringify(appState.projects));
+    localStorage.setItem('soundstudio_presets', JSON.stringify(appState.presets));
 }
 
 // =============================================================================
@@ -416,9 +498,10 @@ function normalizeSelectedServices(servicesList) {
 /**
  * Добавление или обновление проекта
  */
-async function saveProject(projectData) {
-    const isEdit = Boolean(projectData.id);
-    const projectId = isEdit ? projectData.id : 'proj-' + Date.now();
+async function saveProject(projectData, options = {}) {
+    const existingIndex = projectData.id ? appState.projects.findIndex(p => p.id === projectData.id) : -1;
+    const isEdit = existingIndex !== -1;
+    const projectId = isEdit ? projectData.id : (projectData.id || ('proj-' + Date.now()));
 
     const newProject = {
         id: projectId,
@@ -432,14 +515,11 @@ async function saveProject(projectData) {
         deadline_date: projectData.deadline_date || null,
         column_id: projectData.column_id,
         notes: projectData.notes || '',
-        created_at: projectData.created_at || (isEdit ? (appState.projects.find(p => p.id === projectId)?.created_at || new Date().toISOString()) : new Date().toISOString())
+        created_at: projectData.created_at || (isEdit ? (appState.projects[existingIndex]?.created_at || new Date().toISOString()) : new Date().toISOString())
     };
 
     if (isEdit) {
-        const index = appState.projects.findIndex(p => p.id === projectId);
-        if (index !== -1) {
-            appState.projects[index] = newProject;
-        }
+        appState.projects[existingIndex] = newProject;
     } else {
         // Новая задача отправляется ВНИЗ (в конец списка задач)
         appState.projects.push(newProject);
@@ -474,7 +554,9 @@ async function saveProject(projectData) {
         }
     }
 
-    showToast(isEdit ? 'Проект успешно обновлен' : 'Новый проект создан', 'success');
+    if (!options.silent) {
+        showToast(isEdit ? 'Проект успешно обновлен' : 'Новый проект создан', 'success');
+    }
 }
 
 /**
@@ -751,6 +833,485 @@ async function deleteService(serviceId) {
 }
 
 // =============================================================================
+// 4.1. ОПЕРАЦИИ С ПРЕСЕТАМИ КЛИЕНТОВ (ШАБЛОНЫ ДЛЯ БЫСТРОГО СОЗДАНИЯ ТРЕКОВ)
+// =============================================================================
+
+/**
+ * Подсчет общей стоимости услуг пресета на основе актуального прайса
+ */
+function calculatePresetTotalPrice(preset) {
+    if (!preset || !preset.default_services || !Array.isArray(preset.default_services)) return 0;
+    let total = 0;
+    preset.default_services.forEach(item => {
+        const srv = appState.services.find(s => s.id === (item.id || item));
+        if (srv) {
+            const qty = item.quantity || 1;
+            total += (Number(srv.price) || 0) * qty;
+        }
+    });
+    return total;
+}
+
+/**
+ * Сохранение (создание или редактирование) пресета клиента
+ */
+async function savePreset(presetData) {
+    const isEditing = Boolean(presetData.id);
+    let savedPreset;
+
+    if (isEditing) {
+        const index = appState.presets.findIndex(p => p.id === presetData.id);
+        if (index !== -1) {
+            appState.presets[index] = { ...appState.presets[index], ...presetData };
+            savedPreset = appState.presets[index];
+        } else {
+            savedPreset = { ...presetData };
+            appState.presets.push(savedPreset);
+        }
+    } else {
+        savedPreset = {
+            ...presetData,
+            id: 'preset-' + Date.now(),
+            created_at: new Date().toISOString()
+        };
+        appState.presets.push(savedPreset);
+    }
+
+    saveDataLocally();
+    renderClientPresetsBar();
+
+    // Синхронизация с Supabase при наличии таблицы
+    if (appState.isSupabaseConnected && appState.supabaseClient) {
+        try {
+            await appState.supabaseClient
+                .from('client_presets')
+                .upsert({
+                    id: savedPreset.id,
+                    client_name: savedPreset.client_name,
+                    client_link: savedPreset.client_link || null,
+                    avatar_color: savedPreset.avatar_color || 'amber',
+                    default_services: savedPreset.default_services || [],
+                    default_deposit: savedPreset.default_deposit || 0,
+                    notes: savedPreset.notes || null
+                });
+        } catch (err) {
+            console.warn('Не удалось синхронизировать пресет с Supabase (возможно, таблица еще не создана):', err);
+        }
+    }
+
+    showToast(isEditing ? `Пресет «${savedPreset.client_name}» обновлен` : `Пресет «${savedPreset.client_name}» добавлен в плашку!`, 'success');
+    return savedPreset;
+}
+
+/**
+ * Удаление пресета клиента
+ */
+async function deletePreset(presetId) {
+    const preset = appState.presets.find(p => p.id === presetId);
+    if (!preset) return false;
+
+    const confirmed = await showConfirmDialog({
+        title: 'Удалить пресет клиента?',
+        message: `Удалить пресет «${preset.client_name}» из верхней плашки? Созданные ранее треки не будут затронуты.`,
+        confirmText: 'Да, удалить',
+        danger: true
+    });
+
+    if (!confirmed) return false;
+
+    appState.presets = appState.presets.filter(p => p.id !== presetId);
+    saveDataLocally();
+    renderClientPresetsBar();
+
+    if (appState.isSupabaseConnected && appState.supabaseClient) {
+        try {
+            await appState.supabaseClient
+                .from('client_presets')
+                .delete()
+                .eq('id', presetId);
+        } catch (err) {
+            console.warn('Ошибка удаления пресета в Supabase:', err);
+        }
+    }
+
+    showToast(`Пресет «${preset.client_name}» удален`, 'info');
+    return true;
+}
+
+/**
+ * Отрисовка верхней плашки пресетов клиентов
+ */
+function renderClientPresetsBar() {
+    const bar = document.getElementById('clientPresetsBar');
+    const carousel = document.getElementById('presetsCarousel');
+    const countBadge = document.getElementById('presetsCountBadge');
+
+    if (!bar || !carousel) return;
+
+    // Обновляем бейдж количества
+    const count = appState.presets ? appState.presets.length : 0;
+    if (countBadge) {
+        countBadge.textContent = count;
+    }
+
+    carousel.innerHTML = '';
+
+    if (!appState.presets || appState.presets.length === 0) {
+        carousel.innerHTML = `
+            <div class="presets-empty-state">
+                <span>Нет сохраненных пресетов.</span>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openAddPresetModal()">+ Добавить первого клиента</button>
+            </div>
+        `;
+        return;
+    }
+
+    appState.presets.forEach(preset => {
+        const card = createPresetCardElement(preset);
+        carousel.appendChild(card);
+    });
+}
+
+/**
+ * Создание DOM-элемента компактной овальной карточки пресета клиента
+ * Нажатие на карточку сразу открывает редактирование пресета (без необходимости тянуться к карандашику)
+ * Перетаскивание на колонку доски создает новый проект по этому пресету
+ */
+function createPresetCardElement(preset) {
+    const card = document.createElement('div');
+    card.className = 'preset-card';
+    card.id = `preset-card-${preset.id}`;
+    card.draggable = true;
+    card.dataset.presetId = preset.id;
+    card.title = `Клиент: ${preset.client_name || 'Без имени'}\nНажмите для редактирования • Перетащите на колонку для создания трека`;
+
+    // Флаг для разделения клика и Drag & Drop
+    let wasDragging = false;
+    let dragDistance = 0;
+
+    card.addEventListener('dragstart', (e) => {
+        wasDragging = true;
+        dragDistance = 0;
+        appState.draggedPresetId = preset.id;
+        card.classList.add('preset-dragging');
+        if (e.dataTransfer) {
+            e.dataTransfer.effectAllowed = 'copy';
+            // Гарантированный кроссбраузерный идентификатор через префикс text/plain
+            e.dataTransfer.setData('text/plain', `PRESET_DROP:${preset.id}`);
+        }
+    });
+
+    card.addEventListener('dragend', () => {
+        card.classList.remove('preset-dragging');
+        document.querySelectorAll('.kanban-column').forEach(col => {
+            col.classList.remove('preset-drop-target');
+            col.classList.remove('drag-over');
+        });
+        // Очищаем appState.draggedPresetId с задержкой 350мс, чтобы drop гарантированно считал ID
+        setTimeout(() => {
+            appState.draggedPresetId = null;
+            wasDragging = false;
+        }, 350);
+    });
+
+    // Нажатие на карточку сразу открывает модальное окно редактирования
+    card.addEventListener('click', (e) => {
+        if (wasDragging) return;
+        openEditPresetModal(preset.id);
+    });
+
+    const colorClass = `avatar-${preset.avatar_color || 'amber'}`;
+    const initials = (preset.client_name || 'К').trim().substring(0, 2).toUpperCase();
+
+    card.innerHTML = `
+        <span class="preset-avatar ${colorClass}">${initials}</span>
+        <span class="preset-client-name" title="${escapeHtml(preset.client_name)}">${escapeHtml(preset.client_name)}</span>
+    `;
+
+    return card;
+}
+window.renderClientPresetsBar = renderClientPresetsBar;
+
+/**
+ * Открытие модального окна добавления нового пресета
+ */
+function openAddPresetModal() {
+    document.getElementById('presetModalTitle').textContent = 'Новый пресет постоянного клиента';
+    document.getElementById('presetIdField').value = '';
+    document.getElementById('presetClientNameInput').value = '';
+    document.getElementById('presetClientLinkInput').value = '';
+    document.getElementById('presetDefaultDepositInput').value = '';
+    document.getElementById('presetNotesInput').value = '';
+
+    // Скрываем кнопку удаления для нового пресета
+    const delBtn = document.getElementById('deletePresetModalBtn');
+    if (delBtn) delBtn.classList.add('hidden');
+
+    const useBtn = document.getElementById('presetModalUseBtn');
+    if (useBtn) useBtn.classList.add('hidden');
+
+    // Радио-кнопка цвета по умолчанию
+    const defaultColorRadio = document.querySelector('input[name="preset_color"][value="amber"]');
+    if (defaultColorRadio) defaultColorRadio.checked = true;
+
+    // Выбираем по умолчанию первые 2 услуги
+    const defaultSelected = appState.services.slice(0, 2).map(s => ({ id: s.id, quantity: 1 }));
+    renderPresetServicesCheckboxes(defaultSelected);
+
+    document.getElementById('presetModal').classList.remove('hidden');
+    document.getElementById('presetClientNameInput').focus();
+}
+window.openAddPresetModal = openAddPresetModal;
+
+/**
+ * Открытие модального окна редактирования существующего пресета
+ */
+function openEditPresetModal(presetId) {
+    const preset = appState.presets.find(p => p.id === presetId);
+    if (!preset) return;
+
+    document.getElementById('presetModalTitle').textContent = `Редактировать пресет: ${preset.client_name}`;
+    document.getElementById('presetIdField').value = preset.id;
+    document.getElementById('presetClientNameInput').value = preset.client_name || '';
+    document.getElementById('presetClientLinkInput').value = preset.client_link || '';
+    document.getElementById('presetDefaultDepositInput').value = preset.default_deposit || '';
+    document.getElementById('presetNotesInput').value = preset.notes || '';
+
+    // Показываем кнопку удаления пресета
+    const delBtn = document.getElementById('deletePresetModalBtn');
+    if (delBtn) {
+        delBtn.classList.remove('hidden');
+        delBtn.onclick = () => {
+            closePresetModal();
+            deletePreset(preset.id);
+        };
+    }
+
+    // Показываем кнопку "В работу" для быстрого создания трека
+    const useBtn = document.getElementById('presetModalUseBtn');
+    if (useBtn) {
+        useBtn.classList.remove('hidden');
+        useBtn.onclick = () => {
+            closePresetModal();
+            openPresetToProjectModal(preset.id);
+        };
+    }
+
+    // Цвет аватара
+    const color = preset.avatar_color || 'amber';
+    const colorRadio = document.querySelector(`input[name="preset_color"][value="${color}"]`);
+    if (colorRadio) colorRadio.checked = true;
+
+    renderPresetServicesCheckboxes(preset.default_services || []);
+
+    document.getElementById('presetModal').classList.remove('hidden');
+    document.getElementById('presetClientNameInput').focus();
+}
+window.openEditPresetModal = openEditPresetModal;
+
+function closePresetModal() {
+    const modal = document.getElementById('presetModal');
+    if (modal) modal.classList.add('hidden');
+}
+window.closePresetModal = closePresetModal;
+
+/**
+ * Генерация списка услуг с чекбоксами для модального окна пресета
+ */
+function renderPresetServicesCheckboxes(preSelected = []) {
+    const container = document.getElementById('presetServicesCheckboxGrid');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!appState.services || appState.services.length === 0) {
+        container.innerHTML = `<div style="grid-column: span 2; padding: 10px; color: var(--text-muted); font-size: 12px;">Прайс-лист пуст. Добавьте услуги в окне прайса.</div>`;
+        recalculatePresetCosts();
+        return;
+    }
+
+    const normalizedPreSelected = normalizeSelectedServices(preSelected);
+
+    appState.services.forEach(service => {
+        const found = normalizedPreSelected.find(item => item.id === service.id);
+        const isChecked = Boolean(found);
+        const quantity = found ? found.quantity : 1;
+
+        const item = document.createElement('div');
+        item.className = `service-checkbox-item ${isChecked ? 'checked' : ''}`;
+        item.dataset.serviceId = service.id;
+
+        item.innerHTML = `
+            <div class="service-checkbox-main">
+                <label class="service-checkbox-label" title="${escapeHtml(service.name)}">
+                    <input type="checkbox" name="preset_selected_services" value="${service.id}" data-price="${service.price}" ${isChecked ? 'checked' : ''}>
+                    <span>${escapeHtml(service.name)}</span>
+                </label>
+                <span class="service-checkbox-price">${formatCurrency(service.price * quantity)}</span>
+            </div>
+            <div class="service-qty-controls ${isChecked ? '' : 'hidden'}">
+                <div class="service-qty-left">
+                    <span class="service-qty-label">Кол-во:</span>
+                    <div class="service-qty-stepper">
+                        <button type="button" class="btn-qty-step btn-preset-minus" title="Уменьшить">−</button>
+                        <input type="number" class="service-qty-input preset-service-qty-input" min="1" max="99" value="${quantity}" data-service-id="${service.id}">
+                        <button type="button" class="btn-qty-step btn-preset-plus" title="Увеличить">+</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        const qtyControls = item.querySelector('.service-qty-controls');
+        const qtyInput = item.querySelector('.preset-service-qty-input');
+        const btnMinus = item.querySelector('.btn-preset-minus');
+        const btnPlus = item.querySelector('.btn-preset-plus');
+
+        checkbox.addEventListener('change', () => {
+            if (checkbox.checked) {
+                item.classList.add('checked');
+                qtyControls.classList.remove('hidden');
+                if (parseInt(qtyInput.value, 10) < 1) qtyInput.value = '1';
+            } else {
+                item.classList.remove('checked');
+                qtyControls.classList.add('hidden');
+            }
+            recalculatePresetCosts();
+        });
+
+        btnMinus.addEventListener('click', () => {
+            let current = parseInt(qtyInput.value, 10) || 1;
+            if (current > 1) {
+                qtyInput.value = current - 1;
+                recalculatePresetCosts();
+            }
+        });
+
+        btnPlus.addEventListener('click', () => {
+            let current = parseInt(qtyInput.value, 10) || 1;
+            qtyInput.value = current + 1;
+            recalculatePresetCosts();
+        });
+
+        qtyInput.addEventListener('input', () => {
+            let val = parseInt(qtyInput.value, 10);
+            if (isNaN(val) || val < 1) val = 1;
+            qtyInput.value = val;
+            recalculatePresetCosts();
+        });
+
+        container.appendChild(item);
+    });
+
+    recalculatePresetCosts();
+}
+
+/**
+ * Пересчет стоимости выбранных услуг в модальном окне пресета
+ */
+function recalculatePresetCosts() {
+    const container = document.getElementById('presetServicesCheckboxGrid');
+    const totalPreview = document.getElementById('presetCalculatedTotal');
+    if (!container || !totalPreview) return;
+
+    let total = 0;
+    container.querySelectorAll('.service-checkbox-item').forEach(item => {
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        const qtyInput = item.querySelector('.preset-service-qty-input');
+        const priceLabel = item.querySelector('.service-checkbox-price');
+        const unitPrice = Number(checkbox ? checkbox.dataset.price : 0) || 0;
+
+        if (checkbox && checkbox.checked) {
+            const qty = Math.max(1, parseInt(qtyInput ? qtyInput.value : 1, 10) || 1);
+            const lineTotal = unitPrice * qty;
+            total += lineTotal;
+            if (priceLabel) priceLabel.textContent = formatCurrency(lineTotal);
+        } else {
+            if (priceLabel) priceLabel.textContent = formatCurrency(unitPrice);
+        }
+    });
+
+    totalPreview.textContent = formatCurrency(total);
+}
+
+/**
+ * Открытие модального окна быстрого создания трека на основе пресета (в 1 клик или при перетаскивании на колонку)
+ */
+function openPresetToProjectModal(presetId, targetColumnId) {
+    const preset = appState.presets.find(p => p.id === presetId);
+    if (!preset) return;
+
+    const modal = document.getElementById('presetToProjectModal');
+    const summaryCard = document.getElementById('p2pSummaryCard');
+    const colSelect = document.getElementById('p2pColumnSelect');
+    const presetIdField = document.getElementById('p2pPresetIdField');
+    const trackInput = document.getElementById('p2pTrackTitleInput');
+    const depositInput = document.getElementById('p2pDepositInput');
+    const totalInput = document.getElementById('p2pTotalPriceInput');
+    const notesInput = document.getElementById('p2pNotesInput');
+
+    if (!modal) return;
+
+    presetIdField.value = preset.id;
+
+    // Заполнение выпадающего списка колонок доски
+    colSelect.innerHTML = '';
+    appState.columns.forEach(col => {
+        const opt = document.createElement('option');
+        opt.value = col.id;
+        opt.textContent = col.title;
+        if (targetColumnId && col.id === targetColumnId) {
+            opt.selected = true;
+        } else if (!targetColumnId && col.id === appState.columns[0].id) {
+            opt.selected = true;
+        }
+        colSelect.appendChild(opt);
+    });
+
+    // Расчет стоимости услуг
+    const calculatedTotal = calculatePresetTotalPrice(preset);
+    const defaultDeposit = Number(preset.default_deposit) || 0;
+
+    // Заполнение полей формы
+    trackInput.value = '';
+    depositInput.value = defaultDeposit > 0 ? defaultDeposit : '';
+    totalInput.value = calculatedTotal;
+    notesInput.value = preset.notes || '';
+
+    // Заполнение информационной карточки клиента
+    const initials = (preset.client_name || 'К').trim().substring(0, 2).toUpperCase();
+    const colorClass = `avatar-${preset.avatar_color || 'amber'}`;
+    const normServices = normalizeSelectedServices(preset.default_services);
+    const servicesNames = normServices.map(s => {
+        const srv = appState.services.find(item => item.id === s.id);
+        return srv ? `${srv.name}${s.quantity > 1 ? ` ×${s.quantity}` : ''}` : s.id;
+    }).join(', ');
+
+    summaryCard.innerHTML = `
+        <div class="p2p-client-box">
+            <div class="preset-avatar ${colorClass}">${initials}</div>
+            <div class="p2p-client-details">
+                <span class="p2p-client-name">${escapeHtml(preset.client_name)}</span>
+                <span class="p2p-services-list" title="${escapeHtml(servicesNames || 'Базовые услуги')}">📦 ${escapeHtml(servicesNames || 'Без услуг')}</span>
+            </div>
+        </div>
+        <div class="p2p-price-tag">
+            <div class="p2p-price-label">Сумма пресета</div>
+            <div class="p2p-price-num">${formatCurrency(calculatedTotal)}</div>
+        </div>
+    `;
+
+    modal.classList.remove('hidden');
+    trackInput.focus();
+}
+window.openPresetToProjectModal = openPresetToProjectModal;
+
+function closePresetToProjectModal() {
+    const modal = document.getElementById('presetToProjectModal');
+    if (modal) modal.classList.add('hidden');
+}
+window.closePresetToProjectModal = closePresetToProjectModal;
+
+// =============================================================================
 // 5. РЕНДЕРИНГ ИНТЕРФЕЙСА (ДОСКА, КАРТОЧКИ, СТАТИСТИКА, ПРАЙС)
 // =============================================================================
 
@@ -762,6 +1323,7 @@ function renderAll() {
     if (appState.currentView === 'statistics') {
         renderStatisticsView();
     } else {
+        renderClientPresetsBar();
         renderKanbanBoard();
     }
 }
@@ -777,6 +1339,7 @@ function switchView(viewName) {
     const kanbanWrapper = document.getElementById('kanbanWrapper');
     const statsView = document.getElementById('statisticsView');
     const columnsNav = document.getElementById('columnsNav');
+    const presetsBar = document.getElementById('clientPresetsBar');
 
     if (viewName === 'statistics') {
         if (navProjectsBtn) navProjectsBtn.classList.remove('active');
@@ -784,6 +1347,7 @@ function switchView(viewName) {
         if (kanbanWrapper) kanbanWrapper.classList.add('hidden');
         if (statsView) statsView.classList.remove('hidden');
         if (columnsNav) columnsNav.style.display = 'none';
+        if (presetsBar) presetsBar.classList.add('hidden');
         renderStatisticsView();
     } else {
         if (navProjectsBtn) navProjectsBtn.classList.add('active');
@@ -791,6 +1355,8 @@ function switchView(viewName) {
         if (kanbanWrapper) kanbanWrapper.classList.remove('hidden');
         if (statsView) statsView.classList.add('hidden');
         if (columnsNav) columnsNav.style.display = '';
+        if (presetsBar) presetsBar.classList.remove('hidden');
+        renderClientPresetsBar();
         renderKanbanBoard();
     }
     renderFinancialStats();
@@ -1044,7 +1610,7 @@ function renderStatisticsView() {
             <div class="stats-kpi-grid">
                 <div class="stats-kpi-card highlight-revenue">
                     <div class="stats-kpi-header">
-                        <span class="stats-kpi-label">Выручка (Оборот)</span>
+                        <span class="stats-kpi-label">Общая сумма</span>
                         <span class="stats-kpi-icon">💰</span>
                     </div>
                     <div class="stats-kpi-value text-accent">${formatCurrency(filterRevenue)}</div>
@@ -1053,29 +1619,29 @@ function renderStatisticsView() {
 
                 <div class="stats-kpi-card highlight-deposit">
                     <div class="stats-kpi-header">
-                        <span class="stats-kpi-label">Получено предоплат</span>
-                        <span class="stats-kpi-icon">✅</span>
+                        <span class="stats-kpi-label">Получено авансов</span>
+                        <span class="stats-kpi-icon">💳</span>
                     </div>
                     <div class="stats-kpi-value text-success">${formatCurrency(filterDeposit)}</div>
-                    <div class="stats-kpi-sub">Внесено авансов (${paymentRate}% от общей суммы)</div>
+                    <div class="stats-kpi-sub">Внесено предоплат (${paymentRate}% от общей суммы)</div>
                 </div>
 
                 <div class="stats-kpi-card highlight-debt">
                     <div class="stats-kpi-header">
-                        <span class="stats-kpi-label">Остаток долгов</span>
+                        <span class="stats-kpi-label">Остаток долгов клиентов</span>
                         <span class="stats-kpi-icon">⏳</span>
                     </div>
-                    <div class="stats-kpi-value ${filterDebt > 0 ? 'text-warning' : 'text-muted'}">${formatCurrency(filterDebt)}</div>
+                    <div class="stats-kpi-value ${filterDebt > 0 ? 'text-danger font-bold' : 'text-muted'}">${formatCurrency(filterDebt)}</div>
                     <div class="stats-kpi-sub">К доплате при сдаче треков</div>
                 </div>
 
                 <div class="stats-kpi-card">
                     <div class="stats-kpi-header">
-                        <span class="stats-kpi-label">Количество заказов</span>
+                        <span class="stats-kpi-label">Всего заказов</span>
                         <span class="stats-kpi-icon">📁</span>
                     </div>
                     <div class="stats-kpi-value">${filterCount} <span class="stats-unit">треков</span></div>
-                    <div class="stats-kpi-sub">Добавлено задач за период</div>
+                    <div class="stats-kpi-sub">Добавлено проектов за период</div>
                 </div>
 
                 <div class="stats-kpi-card">
@@ -1136,7 +1702,7 @@ function renderStatisticsView() {
                                             <td class="text-right font-mono text-success">
                                                 ${formatCurrency(m.deposit)}
                                             </td>
-                                            <td class="text-right font-mono ${m.debt > 0 ? 'text-warning font-bold' : 'text-muted'}">
+                                            <td class="text-right font-mono ${m.debt > 0 ? 'text-danger font-bold' : 'text-muted'}">
                                                 ${formatCurrency(m.debt)}
                                             </td>
                                             <td>
@@ -1162,7 +1728,7 @@ function renderStatisticsView() {
                                     <td class="text-center"><strong>${appState.projects.length}</strong></td>
                                     <td class="text-right font-mono text-accent"><strong>${formatCurrency(grandTotalRevenue)}</strong></td>
                                     <td class="text-right font-mono text-success"><strong>${formatCurrency(grandTotalDeposit)}</strong></td>
-                                    <td class="text-right font-mono text-warning"><strong>${formatCurrency(grandTotalDebt)}</strong></td>
+                                    <td class="text-right font-mono text-danger font-bold"><strong>${formatCurrency(grandTotalDebt)}</strong></td>
                                     <td>
                                         <span class="progress-label font-bold">
                                             ${grandTotalRevenue > 0 ? Math.round((grandTotalDeposit / grandTotalRevenue) * 100) : 0}% оплачено
@@ -1259,7 +1825,7 @@ function renderStatisticsView() {
                                                     <div class="stats-project-client">👤 ${escapeHtml(p.client_name)}</div>
                                                 </td>
                                                 <td class="text-right font-mono text-accent font-bold">${formatCurrency(p.total_price)}</td>
-                                                <td class="text-right font-mono ${p.remaining_balance > 0 ? 'text-warning font-bold' : 'text-muted'}">
+                                                <td class="text-right font-mono ${p.remaining_balance > 0 ? 'text-danger font-bold' : 'text-muted'}">
                                                     ${formatCurrency(p.remaining_balance)}
                                                 </td>
                                                 <td>
@@ -1319,6 +1885,18 @@ function renderStatisticsView() {
  * Подсчет и отображение финансовой статистики
  */
 function renderFinancialStats() {
+    if (appState.currentView === 'statistics') {
+        renderStatisticsView();
+        return;
+    }
+
+    const elProjects = document.getElementById('statTotalProjects');
+    const elRevenue = document.getElementById('statTotalRevenue');
+    const elDeposit = document.getElementById('statTotalDeposit');
+    const elDebt = document.getElementById('statTotalDebt');
+
+    if (!elProjects && !elRevenue && !elDeposit && !elDebt) return;
+
     const totalProjectsCount = appState.projects.length;
 
     // Суммируем заработок, предоплаты и остатки
@@ -1332,10 +1910,10 @@ function renderFinancialStats() {
         totalDebt += Number(project.remaining_balance) || 0;
     });
 
-    document.getElementById('statTotalProjects').textContent = totalProjectsCount;
-    document.getElementById('statTotalRevenue').textContent = formatCurrency(totalRevenue);
-    document.getElementById('statTotalDeposit').textContent = formatCurrency(totalDeposit);
-    document.getElementById('statTotalDebt').textContent = formatCurrency(totalDebt);
+    if (elProjects) elProjects.textContent = totalProjectsCount;
+    if (elRevenue) elRevenue.textContent = formatCurrency(totalRevenue);
+    if (elDeposit) elDeposit.textContent = formatCurrency(totalDeposit);
+    if (elDebt) elDebt.textContent = formatCurrency(totalDebt);
 }
 
 /**
@@ -2332,25 +2910,141 @@ function handleDragEnd() {
 
 function handleDragOver(e) {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    this.classList.add('drag-over');
+    if (e.dataTransfer) {
+        if (appState.draggedPresetId) {
+            e.dataTransfer.dropEffect = 'copy';
+        } else {
+            e.dataTransfer.dropEffect = 'move';
+        }
+    }
+    if (appState.draggedPresetId) {
+        this.classList.add('preset-drop-target');
+    } else {
+        this.classList.add('drag-over');
+    }
 }
 
-function handleDragLeave() {
+function handleDragLeave(e) {
+    // Предотвращаем мерцание подсветки при наведении курсора на дочерние элементы колонки
+    if (e.relatedTarget && this.contains(e.relatedTarget)) {
+        return;
+    }
     this.classList.remove('drag-over');
+    this.classList.remove('preset-drop-target');
 }
 
 function handleDrop(e) {
     e.preventDefault();
     this.classList.remove('drag-over');
+    this.classList.remove('preset-drop-target');
 
-    const projectId = e.dataTransfer.getData('text/plain') || appState.draggedProjectId;
-    const targetColumnId = this.dataset.columnId;
+    // Определяем целевую колонку (текущий элемент или родитель .kanban-column)
+    const targetColumn = this.closest('.kanban-column') || this;
+    const targetColumnId = targetColumn ? (targetColumn.dataset.columnId || targetColumn.getAttribute('data-column-id')) : null;
 
-    if (projectId && targetColumnId) {
+    if (!targetColumnId) return;
+
+    let rawData = '';
+    try {
+        rawData = e.dataTransfer ? e.dataTransfer.getData('text/plain') : '';
+    } catch (err) {}
+
+    // 1. Проверяем, был ли перетащен пресет постоянного клиента
+    let presetId = null;
+    if (rawData && rawData.startsWith('PRESET_DROP:')) {
+        presetId = rawData.replace('PRESET_DROP:', '').trim();
+    } else if (appState.draggedPresetId) {
+        presetId = appState.draggedPresetId;
+    }
+
+    if (presetId) {
+        appState.draggedPresetId = null;
+        createProjectFromPresetDrop(presetId, targetColumnId);
+        return;
+    }
+
+    // 2. Иначе это перетаскивание существующей карточки проекта между колонками
+    const projectId = rawData || appState.draggedProjectId;
+    if (projectId && !projectId.startsWith('PRESET_DROP:')) {
         moveProjectToColumn(projectId, targetColumnId);
+        appState.draggedProjectId = null;
     }
 }
+
+/**
+ * Мгновенное создание нового трека на канбан-доске при перетаскивании пресета клиента на колонку
+ */
+async function createProjectFromPresetDrop(presetId, targetColumnId) {
+    const preset = appState.presets.find(p => p.id === presetId);
+    if (!preset) return;
+
+    // Сбрасываем фильтр поиска, чтобы новый трек сразу был гарантированно виден на доске
+    if (appState.searchQuery) {
+        appState.searchQuery = '';
+        const searchInput = document.getElementById('searchProjectsInput');
+        if (searchInput) searchInput.value = '';
+    }
+
+    // Если была открыта статистика, переключаем на доску
+    if (appState.currentView !== 'projects') {
+        switchView('projects');
+    }
+
+    // Определяем целевую колонку
+    let targetCol = appState.columns.find(c => c.id === targetColumnId);
+    if (!targetCol && targetColumnId && targetColumnId.startsWith('col-container-')) {
+        const cleanId = targetColumnId.replace('col-container-', '');
+        targetCol = appState.columns.find(c => c.id === cleanId);
+    }
+    if (!targetCol) {
+        targetCol = appState.columns[0];
+    }
+    const colId = targetCol ? targetCol.id : (appState.columns[0]?.id || 'col-1');
+    const colTitle = targetCol ? targetCol.title : 'В работе';
+
+    const totalPrice = calculatePresetTotalPrice(preset);
+    const deposit = Number(preset.default_deposit) || 0;
+    const remainingBalance = Math.max(0, totalPrice - deposit);
+
+    // Считаем существующие треки этого артиста для понятного номера
+    const clientProjects = appState.projects.filter(p => 
+        (p.client_name || '').trim().toLowerCase() === (preset.client_name || '').trim().toLowerCase()
+    );
+    const trackNumber = clientProjects.length + 1;
+    const trackTitle = `Новый трек #${trackNumber}`;
+
+    const newProject = {
+        id: 'proj-' + Date.now(),
+        track_title: trackTitle,
+        client_name: preset.client_name,
+        client_link: preset.client_link || '',
+        selected_services: preset.default_services ? JSON.parse(JSON.stringify(preset.default_services)) : [],
+        total_price: totalPrice,
+        deposit: deposit,
+        remaining_balance: remainingBalance,
+        deadline_date: null,
+        column_id: colId,
+        notes: preset.notes || '',
+        created_at: new Date().toISOString()
+    };
+
+    await saveProject(newProject, { silent: true });
+
+    showToast(`⚡ Трек «${trackTitle}» для ${preset.client_name} создан в колонке «${colTitle}»!`, 'success');
+
+    // Находим созданную карточку на канбан-доске и добавляем красивую анимацию подтверждения
+    setTimeout(() => {
+        const cardEl = document.getElementById(`card-${newProject.id}`);
+        if (cardEl) {
+            cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            cardEl.classList.add('card-just-created');
+            setTimeout(() => {
+                cardEl.classList.remove('card-just-created');
+            }, 2500);
+        }
+    }, 120);
+}
+window.createProjectFromPresetDrop = createProjectFromPresetDrop;
 
 /**
  * Обновление видимости и состояния кнопки удаления дедлайна
@@ -2455,6 +3149,123 @@ function initEventListeners() {
 
     // Слушатель изменения суммы предоплаты для живого калькулятора
     document.getElementById('depositInput').addEventListener('input', recalculateProjectCosts);
+
+    // ==========================================
+    // СЛУШАТЕЛИ ДЛЯ ПРЕСЕТОВ КЛИЕНТОВ
+    // ==========================================
+
+    // Кнопка добавления пресета
+    const openAddPresetBtn = document.getElementById('openAddPresetModalBtn');
+    if (openAddPresetBtn) {
+        openAddPresetBtn.addEventListener('click', openAddPresetModal);
+    }
+    const closePresetBtn = document.getElementById('closePresetModalBtn');
+    if (closePresetBtn) {
+        closePresetBtn.addEventListener('click', closePresetModal);
+    }
+    const cancelPresetBtn = document.getElementById('cancelPresetModalBtn');
+    if (cancelPresetBtn) {
+        cancelPresetBtn.addEventListener('click', closePresetModal);
+    }
+
+    // Сохранение пресета клиента
+    const presetForm = document.getElementById('presetForm');
+    if (presetForm) {
+        presetForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const presetId = document.getElementById('presetIdField').value;
+            const clientName = document.getElementById('presetClientNameInput').value.trim();
+            const clientLink = document.getElementById('presetClientLinkInput').value.trim();
+            const defaultDeposit = Number(document.getElementById('presetDefaultDepositInput').value) || 0;
+            const notes = document.getElementById('presetNotesInput').value.trim();
+            const colorRadio = document.querySelector('input[name="preset_color"]:checked');
+            const avatarColor = colorRadio ? colorRadio.value : 'amber';
+
+            if (!clientName) return;
+
+            // Сбор выбранных услуг с количеством
+            const defaultServices = [];
+            document.querySelectorAll('#presetServicesCheckboxGrid .service-checkbox-item').forEach(item => {
+                const cb = item.querySelector('input[type="checkbox"]');
+                const qtyInput = item.querySelector('.preset-service-qty-input');
+                if (cb && cb.checked) {
+                    const qty = Math.max(1, parseInt(qtyInput ? qtyInput.value : 1, 10) || 1);
+                    defaultServices.push({ id: cb.value, quantity: qty });
+                }
+            });
+
+            await savePreset({
+                id: presetId || null,
+                client_name: clientName,
+                client_link: clientLink,
+                avatar_color: avatarColor,
+                default_services: defaultServices,
+                default_deposit: defaultDeposit,
+                notes: notes
+            });
+
+            closePresetModal();
+        });
+    }
+
+    // Модальное окно быстрого создания трека из пресета
+    const closeP2PBtn = document.getElementById('closeP2PModalBtn');
+    if (closeP2PBtn) closeP2PBtn.addEventListener('click', closePresetToProjectModal);
+
+    const cancelP2PBtn = document.getElementById('cancelP2PModalBtn');
+    if (cancelP2PBtn) cancelP2PBtn.addEventListener('click', closePresetToProjectModal);
+
+    const p2pForm = document.getElementById('presetToProjectForm');
+    if (p2pForm) {
+        p2pForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const presetId = document.getElementById('p2pPresetIdField').value;
+            const preset = appState.presets.find(p => p.id === presetId);
+            const trackTitle = document.getElementById('p2pTrackTitleInput').value.trim();
+            const columnId = document.getElementById('p2pColumnSelect').value;
+            const deadlineDate = document.getElementById('p2pDeadlineInput').value || null;
+            const deposit = Number(document.getElementById('p2pDepositInput').value) || 0;
+            const totalPrice = Number(document.getElementById('p2pTotalPriceInput').value) || 0;
+            const notes = document.getElementById('p2pNotesInput').value.trim();
+
+            if (!trackTitle || !preset) return;
+
+            const remainingBalance = Math.max(0, totalPrice - deposit);
+
+            const newProject = {
+                id: 'proj-' + Date.now(),
+                track_title: trackTitle,
+                client_name: preset.client_name,
+                client_link: preset.client_link || '',
+                selected_services: preset.default_services ? JSON.parse(JSON.stringify(preset.default_services)) : [],
+                total_price: totalPrice,
+                deposit: deposit,
+                remaining_balance: remainingBalance,
+                deadline_date: deadlineDate,
+                column_id: columnId || (appState.columns[0] ? appState.columns[0].id : 'col-1'),
+                notes: notes,
+                created_at: new Date().toISOString()
+            };
+
+            await saveProject(newProject);
+            closePresetToProjectModal();
+            showToast(`Трек «${trackTitle}» для клиента ${preset.client_name} создан на доске!`, 'success');
+        });
+    }
+
+    // Кнопки плавной прокрутки карусели пресетов
+    const presetsCarousel = document.getElementById('presetsCarousel');
+    const scrollLeftBtn = document.getElementById('presetCarouselScrollLeftBtn');
+    const scrollRightBtn = document.getElementById('presetCarouselScrollRightBtn');
+
+    if (presetsCarousel && scrollLeftBtn && scrollRightBtn) {
+        scrollLeftBtn.addEventListener('click', () => {
+            presetsCarousel.scrollBy({ left: -260, behavior: 'smooth' });
+        });
+        scrollRightBtn.addEventListener('click', () => {
+            presetsCarousel.scrollBy({ left: 260, behavior: 'smooth' });
+        });
+    }
 
     // Поиск по проектам
     const searchInput = document.getElementById('searchInput');
