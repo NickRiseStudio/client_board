@@ -281,6 +281,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initDatabaseConnection();
     await loadInitialData();
     renderAll();
+    setupSupabaseKeepAlive();
 });
 
 /**
@@ -470,6 +471,31 @@ function saveDataLocally() {
     localStorage.setItem('soundstudio_services', JSON.stringify(appState.services));
     localStorage.setItem('soundstudio_projects', JSON.stringify(appState.projects));
     localStorage.setItem('soundstudio_presets', JSON.stringify(appState.presets));
+}
+
+/**
+ * Поддержание жизнеспособности бесплатного Supabase-проекта (keep-alive).
+ * Бесплатный план Supabase ставит проект на паузу, если ~7 дней не было ни одного
+ * запроса к API. Пока доска открыта в браузере, раз в 6 часов делаем лёгкий
+ * read-only запрос — просто «будим» базу. Запрос ничего не создаёт и не меняет,
+ * пользователь ничего не замечает: ни тостов, ни изменений интерфейса.
+ */
+const KEEP_ALIVE_INTERVAL_MS = 6 * 60 * 60 * 1000; // каждые 6 часов
+
+function setupSupabaseKeepAlive() {
+    if (!appState.isSupabaseConnected || !appState.supabaseClient) return;
+    pingSupabaseKeepAlive();                                    // сразу после открытия
+    setInterval(pingSupabaseKeepAlive, KEEP_ALIVE_INTERVAL_MS); // и дальше по расписанию
+}
+
+async function pingSupabaseKeepAlive() {
+    if (!appState.supabaseClient) return;
+    try {
+        // Только количество ID (head: true = без загрузки строк), 1 строка не нужна
+        await appState.supabaseClient.from('kanban_columns').select('id', { count: 'exact', head: true });
+    } catch (err) {
+        console.debug('Keep-alive ping не выполнен (не критично):', err);
+    }
 }
 
 // =============================================================================
